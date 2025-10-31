@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block title %}Кости - Royal Casino{% endblock %}
+{% block styles %}
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  .dice {
+    width: 80px;
+    height: 80px;
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+  }
+  .bet-types {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+  }
+  .bet-type-btn {
+    background: var(--panel);
+    border: 2px solid var(--stroke);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .bet-type-btn:hover {
+    background: var(--stroke);
+  }
+  .bet-type-btn.selected {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+  }
+  .bet-options {
+    margin-top: 15px;
+    display: none;
+  }
+  .number-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .number-btn {
+    background: var(--panel);
+    border: 1px solid var(--stroke);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .number-btn.selected {
+    background: var(--gold);
+    color: #000;
+  }
+  .result {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .paytable {
+    margin-top: 20px;
+  }
+  .paytable-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--stroke);
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="grid">
+  <div class="panel">
+    <h2 style="color:var(--gold);margin-bottom:14px"><i class="fas fa-dice"></i> Игра в кости</h2>
+    
+    <div class="dice-container">
+      <div class="dice" id="dice1">1</div>
+      <div class="dice" id="dice2">1</div>
+    </div>
+    
+    <div class="form-group">
+      <label class="label" for="bet">Ставка</label>
+      <input id="bet" class="input" type="number" min="1" max="{{ balance }}" value="{{ last_bet }}">
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0">
+      <button class="btn" onclick="mul(2)">x2</button>
+      <button class="btn" onclick="mul(3)">x3</button>
+      <button class="btn" onclick="mul(4)">x4</button>
+      <button class="btn" onclick="mul(5)">x5</button>
+    </div>
+    
+    <label class="label">Тип ставки</label>
+    <div class="bet-types">
+      <div class="bet-type-btn" data-type="any_seven">Любая 7</div>
+      <div class="bet-type-btn" data-type="hard_way">Дубль</div>
+      <div class="bet-type-btn" data-type="any_craps">Крабы</div>
+      <div class="bet-type-btn" data-type="field">Поле</div>
+      <div class="bet-type-btn" data-type="specific_number">Конкретное число</div>
+    </div>
+    
+    <div id="hardWayOptions" class="bet-options">
+      <label class="label">Выберите дубль</label>
+      <div class="number-grid">
+        <div class="number-btn" data-number="2">1+1</div>
+        <div class="number-btn" data-number="4">2+2</div>
+        <div class="number-btn" data-number="6">3+3</div>
+        <div class="number-btn" data-number="8">4+4</div>
+        <div class="number-btn" data-number="10">5+5</div>
+        <div class="number-btn" data-number="12">6+6</div>
+      </div>
+    </div>
+    
+    <div id="specificNumberOptions" class="bet-options">
+      <label class="label">Выберите число</label>
+      <div class="number-grid">
+        {% for i in range(2, 13) %}
+          <div class="number-btn" data-number="{{ i }}">{{ i }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <button id="playBtn" class="btn" style="width:100%;margin-top:15px"><i class="fas fa-play"></i> Бросить кости</button>
+
+    <div id="out" class="result" style="display:none">
+      <div id="outText"></div>
+      <div id="outDice" style="font-size:28px;font-weight:700;margin-top:6px"></div>
+      <div id="outDelta"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h3>Правила игры</h3>
+
+      <div class="paytable">
+        <div class="paytable-item">
+          <span>Любая 7 (выпадает 7)</span>
+          <span class="win">4x</span>
+        </div>
+        <div class="paytable-item">
+          <span>Конкретный дубль (2+2, 3+3 и т.д.)</span>
+          <span class="win">8x</span>
+        </div>
+        <div class="paytable-item">
+          <span>Любые крабы</span>
+          <span class="win">7x</span>
+        </div>
+        <div class="paytable-item">
+          <span>Поле (2,3,4,9,10,11,12)</span>
+          <span class="win">2x (3x для 2 и 12)</span>
+        </div>
+        <div class="paytable-item">
+          <span>Конкретное число (4 или 10)</span>
+          <span class="win">9x</span>
+        </div>
+        <div class="paytable-item">
+          <span>Конкретное число (5 или 9)</span>
+          <span class="win">7x</span>
+        </div>
+        <div class="paytable-item">
+          <span>Конкретное число (6 или 8)</span>
+          <span class="win">7x</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:20px">
+      <h3>История игр</h3>
+      <div id="historyContainer" style="max-height:400px;overflow:auto;margin-top:10px">
+        {% if history %}
+          {% set dice_types = {'any_seven':'Любая 7','hard_way':'Дубль','any_craps':'Крабы','field':'Поле','specific_number':'Конкретное число'} %}
+          {% for item in history %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--stroke)">
+              <div>
+                <div style="font-size:20px">{{ item.dice1 }} + {{ item.dice2 }} = {{ item.total }}</div>
+                <div style="font-weight:600;color:{% if item.win %}var(--ok){% else %}var(--bad){% endif %}">
+                  {{ item.bet }} ₽ • {{ dice_types.get(item.bet_type, item.bet_type) }}{% if item.selected_number %} ({{ item.selected_number }}){% endif %}
+                </div>
+                <div class="muted" style="font-size:12px">{{ item.timestamp }}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="{{ 'win' if item.win else 'lose' }}">
+                  {{ '+' if item.win else '-' }}{{ item.win_amount if item.win else item.bet }} ₽
+                </div>
+                <div class="muted" style="font-size:12px">{{ item.result.split('. ')[0] }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="muted" style="text-align:center;padding:20px"><i class="fas fa-history"></i> История пуста</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  let selectedBetType = null;
+  let selectedNumber = null;
+  const betTypeBtns = document.querySelectorAll('.bet-type-btn');
+  const numberBtns = document.querySelectorAll('.number-btn');
+  const dice1 = document.getElementById('dice1');
+  const dice2 = document.getElementById('dice2');
+  const betInput = document.getElementById('bet');
+  const out = document.getElementById('out');
+  const outText = document.getElementById('outText');
+  const outDice = document.getElementById('outDice');
+  const outDelta = document.getElementById('outDelta');
+  const playBtn = document.getElementById('playBtn');
+  const hardWayOptions = document.getElementById('hardWayOptions');
+  const specificNumberOptions = document.getElementById('specificNumberOptions');
+  const historyContainer = document.getElementById('historyContainer');
+  const betTypeNames = {any_seven:'Любая 7',hard_way:'Дубль',any_craps:'Крабы',field:'Поле',specific_number:'Конкретное число'};
+
+  // Восстановление сохраненных значений при загрузке страницы
+  document.addEventListener('DOMContentLoaded', function() {
+    // Восстанавливаем сумму ставки
+    const savedBet = localStorage.getItem('dice_bet');
+    if (savedBet) {
+      betInput.value = savedBet;
+    }
+    
+    // Восстанавливаем тип ставки
+    const savedBetType = localStorage.getItem('dice_bet_type');
+    if (savedBetType) {
+      selectedBetType = savedBetType;
+      document.querySelectorAll('.bet-type-btn').forEach(btn => {
+        if (btn.dataset.type === savedBetType) {
+          btn.classList.add('selected');
+          if (savedBetType === 'hard_way') {
+            hardWayOptions.style.display = 'block';
+          } else if (savedBetType === 'specific_number') {
+            specificNumberOptions.style.display = 'block';
+          }
+        }
+      });
+    }
+    
+    // Восстанавливаем выбранное число если есть
+    const savedNumber = localStorage.getItem('dice_selected_number');
+    if (savedNumber) {
+      selectedNumber = parseInt(savedNumber);
+      document.querySelectorAll('.number-btn').forEach(btn => {
+        if (parseInt(btn.dataset.number) === selectedNumber) {
+          btn.classList.add('selected');
+        }
+      });
+    }
+  });
+
+  // Сохранение суммы ставки при изменении
+  betInput.addEventListener('change', function() {
+    localStorage.setItem('dice_bet', this.value);
+  });
+
+  // Выбор типа ставки
+  betTypeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      betTypeBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedBetType = btn.dataset.type;
+      localStorage.setItem('dice_bet_type', selectedBetType);
+      hardWayOptions.style.display = selectedBetType === 'hard_way' ? 'block' : 'none';
+      specificNumberOptions.style.display = selectedBetType === 'specific_number' ? 'block' : 'none';
+      if (selectedBetType !== 'hard_way' && selectedBetType !== 'specific_number') {
+        selectedNumber = null;
+        localStorage.removeItem('dice_selected_number');
+        document.querySelectorAll('.number-btn').forEach(b => b.classList.remove('selected'));
+      }
+    });
+  });
+
+  // Выбор числа
+  document.querySelectorAll('.number-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.number-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedNumber = parseInt(btn.dataset.number);
+      localStorage.setItem('dice_selected_number', selectedNumber);
+    });
+  });
+
+  function mul(m) {
+    let b = parseInt(betInput.value || '0', 10);
+    const maxB = parseInt(betInput.max || '0', 10);
+    b = Math.min(maxB, b * m);
+    betInput.value = b;
+    localStorage.setItem('dice_bet', b);
+  }
+
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      credentials: 'same-origin',
+      body: new URLSearchParams(body).toString()
+    }).then(r => r.ok ? r.json() : Promise.reject());
+  }
+
+  // Обработка игры
+  playBtn.addEventListener('click', async () => {
+    if (!selectedBetType) {
+      alert('Пожалуйста, выберите тип ставки');
+      return;
+    }
+    if ((selectedBetType === 'hard_way' || selectedBetType === 'specific_number') && !selectedNumber) {
+      alert('Пожалуйста, выберите число');
+      return;
+    }
+    const bet = parseInt(betInput.value, 10);
+    if (!bet || bet <= 0 || bet > {{ balance }}) {
+      alert('Неверная ставка');
+      return;
+    }
+    playBtn.disabled = true;
+    const formData = { bet: bet, bet_type: selectedBetType };
+    if (selectedNumber) formData.selected_number = selectedNumber;
+    try {
+      const data = await post('{{ url_for("play_dice") }}', formData);
+      if (!data.success) { alert(data.message); return; }
+      await new Promise(r => setTimeout(r, 500));
+      document.getElementById('dice1').textContent = data.dice1;
+      document.getElementById('dice2').textContent = data.dice2;
+      out.style.display = 'block';
+      outText.textContent = data.result.split('. ')[0] + '.';
+      outText.className = data.win ? 'win' : 'lose';
+      outDice.textContent = `${data.dice1} + ${data.dice2} = ${data.total}`;
+      outDelta.innerHTML = data.win ? '<span class="win">+ ' + data.win_amount + ' ₽</span>' : '<span class="lose">- ' + bet + ' ₽</span>';
+      setBalance(data.balance);
+      setLevel(data.level);
+      const timeString = new Date().toLocaleString('ru-RU');
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--stroke)';
+      const typeName = betTypeNames[selectedBetType] || selectedBetType;
+      const numText = selectedNumber ? ` (${selectedNumber})` : '';
+      item.innerHTML = `
+        <div>
+          <div style="font-size:20px">${data.dice1} + ${data.dice2} = ${data.total}</div>
+          <div style="font-weight:600;color:${data.win ? 'var(--ok)' : 'var(--bad)'}">${bet} ₽ • ${typeName}${numText}</div>
+          <div class="muted" style="font-size:12px">${timeString}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="${data.win ? 'win' : 'lose'}">${data.win ? '+' : '-'}${data.win ? data.win_amount : bet} ₽</div>
+          <div class="muted" style="font-size:12px">${data.result.split('. ')[0]}</div>
+        </div>`;
+      historyContainer.prepend(item);
+    } catch (e) {
+      alert('Ошибка запроса');
+    } finally {
+      playBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

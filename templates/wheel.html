@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Колесо Фортуны - Royal Casino{% endblock %}
+{% block styles %}
+<style>
+*{box-sizing:border-box}
+.wheel-card{display:flex;flex-direction:column;align-items:center;gap:16px;margin:20px auto;max-width:500px}
+.deal-wheel{--size:clamp(250px,80vmin,700px);--lg-hs:0 3%;--lg-stop:50%;--lg:linear-gradient(hsl(var(--lg-hs) 0%) 0 var(--lg-stop),hsl(var(--lg-hs) 20%) var(--lg-stop) 100%);position:relative;display:grid;grid-gap:calc(var(--size)/20);align-items:center;grid-template-areas:"spinner" "trigger";font-size:calc(var(--size)/21);margin:auto}
+.deal-wheel>*{grid-area:spinner}
+.deal-wheel button{grid-area:trigger;justify-self:center}
+.spinner{position:relative;display:grid;align-items:center;grid-template-areas:"spinner";width:var(--size);height:var(--size);transform:rotate(calc(var(--rotate,25)*1deg));border-radius:50%}
+.spinner *{grid-area:spinner}
+.prize{display:flex;align-items:center;padding:0 calc(var(--size)/6) 0 calc(var(--size)/20);width:50%;height:50%;transform-origin:center right;transform:rotate(var(--rotate));user-select:none}
+.ticker{position:relative;left:calc(var(--size)/-15);width:calc(var(--size)/10);height:calc(var(--size)/20);background:var(--lg);z-index:1;clip-path:polygon(20% 0,100% 50%,20% 100%,0 50%);transform-origin:center left}
+.deal-wheel button:disabled{cursor:progress;opacity:.5}
+.is-spinning .spinner{transition:transform 8s cubic-bezier(0.1,-0.01,0,1)}
+.is-spinning .ticker{animation:tick 700ms cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes tick{40%{transform:rotate(-12deg)}}
+.prize.selected .text{color:#fff;animation:selected 800ms ease}
+@keyframes selected{25%{transform:scale(1.25);text-shadow:1vmin 1vmin 0 hsla(0 0% 0% /.1)}40%{transform:scale(.92);text-shadow:0 0 0 hsla(0 0% 0% /.2)}60%{transform:scale(1.02);text-shadow:.5vmin .5vmin 0 hsla(0 0% 0% /.1)}75%{transform:scale(.98)}85%{transform:scale(1)}}
+.result{text-align:center;margin-top:10px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card wheel-card">
+  <div class="deal-wheel">
+    <ul class="spinner"></ul>
+    <div class="ticker"></div>
+    <button class="btn" id="spinBtn" {% if last_spin == today %}disabled{% endif %}>Испытай удачу</button>
+  </div>
+  <div id="wheelResult" class="result" style="display:none"></div>
+  {% if last_spin == today %}<div class="muted" style="margin-top:8px">Попробуйте снова завтра</div>{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const prizes = {{ prizes|tojson }};
+const wheel=document.querySelector('.deal-wheel');
+const spinner=wheel.querySelector('.spinner');
+const trigger=document.getElementById('spinBtn');
+const ticker=wheel.querySelector('.ticker');
+const prizeSlice=360/prizes.length;
+const prizeOffset=Math.floor(180/prizes.length);
+const spinClass='is-spinning';
+const selectedClass='selected';
+const spinnerStyles=window.getComputedStyle(spinner);
+let tickerAnim;let rotation=0;let currentSlice=0;let prizeNodes;
+function createPrizeNodes(){prizes.forEach(({text,color},i)=>{const rot=((prizeSlice*i)*-1)-prizeOffset;spinner.insertAdjacentHTML('beforeend',`<li class="prize" style="--rotate: ${rot}deg"><span class="text">${text}</span></li>`);});}
+function createConicGradient(){spinner.setAttribute('style',`background: conic-gradient(from -90deg, ${prizes.map(({color},i)=>`${color} 0 ${(100/prizes.length)*(prizes.length-i)}%`).reverse()});`);} 
+function setupWheel(){createConicGradient();createPrizeNodes();prizeNodes=wheel.querySelectorAll('.prize');}
+function spinertia(min,max){min=Math.ceil(min);max=Math.floor(max);return Math.floor(Math.random()*(max-min+1))+min;}
+function runTickerAnimation(){const values=spinnerStyles.transform.split('(')[1].split(')')[0].split(',');const a=values[0];const b=values[1];let rad=Math.atan2(b,a);if(rad<0)rad+=2*Math.PI;const angle=Math.round(rad*(180/Math.PI));const slice=Math.floor(angle/prizeSlice);if(currentSlice!==slice){ticker.style.animation='none';setTimeout(()=>ticker.style.animation=null,10);currentSlice=slice;}tickerAnim=requestAnimationFrame(runTickerAnimation);}
+function selectPrize(index){prizeNodes[index].classList.add(selectedClass);}
+trigger&&trigger.addEventListener('click',async()=>{trigger.disabled=true;const res=await fetch('{{ url_for("spin_wheel") }}',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF_TOKEN}});const data=await res.json();if(!data.success){alert(data.message);trigger.disabled=false;return;}const index=prizes.findIndex(p=>p.value===data.prize);rotation=Math.floor(Math.random()*360+spinertia(2000,5000));rotation+=index*prizeSlice+prizeOffset;prizeNodes.forEach(p=>p.classList.remove(selectedClass));wheel.classList.add(spinClass);spinner.style.setProperty('--rotate',rotation);ticker.style.animation='none';runTickerAnimation();spinner.addEventListener('transitionend',()=>{cancelAnimationFrame(tickerAnim);rotation%=360;selectPrize(index);wheel.classList.remove(spinClass);spinner.style.setProperty('--rotate',rotation);document.querySelector('.balance').textContent=data.balance+' ₽';const resDiv=document.getElementById('wheelResult');resDiv.style.display='block';resDiv.innerHTML=`<span class="win">+${data.prize} ₽</span>`;trigger.disabled=false;},{once:true});});
+setupWheel();
+</script>
+{% endblock %}

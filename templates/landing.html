@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Royal Casino - Премиум азартные игры{% endblock %}
+{% block content %}
+  <section class="hero">
+    <h1 class="hero-title">Royal Casino</h1>
+    <p class="hero-sub muted">Испытайте удачу в нашем премиум‑казино: эксклюзивные игры, ежедневные бонусы и честная механика.</p>
+    <div class="hero-actions">
+      <a class="btn" href="{{ url_for('register') }}"><i class="fas fa-crown"></i> Начать игру</a>
+      <a class="btn btn-outline" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i> Войти</a>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Наши игры</h2></div>
+    <div class="card-grid">
+      <a class="card card-center" href="{{ url_for('chance_game') }}">
+        <div class="icon"><i class="fas fa-dice"></i></div>
+        <div>Игра на шанс</div>
+        <div class="muted">Выберите шанс от 1 до 100% — чем риск выше, тем выше награда.</div>
+      </a>
+      <a class="card card-center" href="{{ url_for('slots_game') }}">
+        <div class="icon"><i class="fas fa-sliders-h"></i></div>
+        <div>Игровые автоматы</div>
+        <div class="muted">Классические слоты с яркими символами и щедрыми коэффициентами.</div>
+      </a>
+      <a class="card card-center" href="{{ url_for('blackjack_game') }}">
+        <div class="icon"><i class="fas fa-diamond"></i></div>
+        <div>Блэкджек</div>
+        <div class="muted">Обхитрите дилера и наберите 21! Премиальная реализация классики.</div>
+      </a>
+      <a class="card card-center" href="{{ url_for('dice_game') }}">
+        <div class="icon"><i class="fas fa-dice-six"></i></div>
+        <div>Кости</div>
+        <div class="muted">Ставьте на исход двух костей и выигрывайте.</div>
+      </a>
+      <a class="card card-center" href="{{ url_for('coinflip_game') }}">
+        <div class="icon"><i class="fas fa-coins"></i></div>
+        <div>Монетка</div>
+        <div class="muted">Угадайте сторону монеты и удвойте ставку.</div>
+      </a>
+      <a class="card card-center" href="{{ url_for('wheel_of_fortune') }}">
+        <div class="icon"><i class="fas fa-compact-disc"></i></div>
+        <div>Колесо фортуны</div>
+        <div class="muted">Ежедневное бесплатное вращение с гарантированным призом.</div>
+      </a>
+    </div>
+  </section>
+{% endblock %}

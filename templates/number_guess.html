@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% set TEXT = {
+  'ru': {
+    'title': 'Угадай число',
+    'subtitle': 'Выберите число от 1 до 10. Угадайте выпадение и получите x9 от ставки.',
+    'play': 'Сделать ставку',
+    'history': 'История игр',
+    'empty': 'История пуста',
+    'rules_title': 'Правила игры',
+    'rules_text': 'Ставьте на число от 1 до 10. Совпадение приносит выплату x9, промах — потерю ставки.',
+    'payout': 'Выплата',
+    'your_pick': 'Вы выбрали',
+    'rolled': 'Выпало'
+  },
+  'en': {
+    'title': 'Number Guess',
+    'subtitle': 'Pick a number from 1 to 10. Guess correctly to win 9x your stake.',
+    'play': 'Place bet',
+    'history': 'Game history',
+    'empty': 'History is empty',
+    'rules_title': 'Game rules',
+    'rules_text': 'Bet on a number between 1 and 10. Matching it awards x9, otherwise you lose the stake.',
+    'payout': 'Payout',
+    'your_pick': 'You picked',
+    'rolled': 'Winning number'
+  }
+} %}
+{% set copy = TEXT.get(lang, TEXT['ru']) %}
+{% block title %}{{ copy.title }} - Royal Casino{% endblock %}
+{% block styles %}
+<style>
+  .guess-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin:20px 0;align-items:start}
+  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:24px;box-shadow:var(--shadow);}
+  .number-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0;}
+  .number-btn{background:var(--panel);border:2px solid var(--stroke);border-radius:10px;padding:14px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s ease;}
+  .number-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .result-box{background:var(--panel);border-radius:10px;padding:18px;margin-top:16px;display:none;}
+  .result-box .label{font-weight:600;margin-top:8px;}
+  .history-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--stroke);}
+  .history-item:last-child{border-bottom:none;}
+  .history-item .meta{font-size:12px;color:var(--muted);margin-top:4px;}
+  .history-empty{color:var(--muted);text-align:center;padding:24px;}
+  @media(max-width:768px){
+    .panel{padding:18px;}
+    .number-grid{grid-template-columns:repeat(5,1fr);}
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="guess-grid">
+  <div class="panel">
+    <h2 style="color:var(--gold);margin-bottom:8px"><i class="fas fa-bullseye"></i> {{ copy.title }}</h2>
+    <p class="muted" style="margin-bottom:18px">{{ copy.subtitle }}</p>
+    <div class="form-group">
+      <label class="label" for="bet">{{ t.bet }}</label>
+      <input id="bet" class="input" type="number" min="1" max="{{ balance }}" value="{{ last_bet }}">
+    </div>
+    <div class="number-grid" id="numberGrid">
+      {% for num in range(1, 11) %}
+      <button class="number-btn{% if num == last_choice %} active{% endif %}" type="button" data-number="{{ num }}">{{ num }}</button>
+      {% endfor %}
+    </div>
+    <button id="playBtn" class="btn" style="width:100%"><i class="fas fa-dice"></i> {{ copy.play }}</button>
+    <div id="resultBox" class="result-box">
+      <div id="resultText" class="label"></div>
+      <div id="drawText" class="meta"></div>
+      <div id="deltaText" class="label"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>{{ copy.rules_title }}</h3>
+    <p class="muted" style="margin:12px 0 18px">{{ copy.rules_text }}</p>
+    <h3 style="margin-bottom:12px">{{ copy.history }}</h3>
+    <div id="historyContainer" style="max-height:480px;overflow:auto;">
+      {% if history %}
+        {% for item in history %}
+        <div class="history-item">
+          <div>
+            <div style="font-weight:600;color:{% if item.win %}var(--ok){% else %}var(--bad){% endif %}">{{ item.bet }} ₽ • {{ copy.your_pick }}: {{ item.choice }}</div>
+            <div class="meta">{{ item.timestamp }} • {{ copy.rolled }}: {{ item.winning_number }} • {{ copy.payout }}: x{{ item.payout }}</div>
+          </div>
+          <div style="text-align:right">
+            {% if item.win %}
+            <div class="win">+{{ item.win_amount }} ₽</div>
+            {% else %}
+            <div class="lose">-{{ item.bet }} ₽</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="history-empty" id="historyEmpty"><i class="fas fa-history"></i> {{ copy.empty }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const betInput = document.getElementById('bet');
+  const playBtn = document.getElementById('playBtn');
+  const resultBox = document.getElementById('resultBox');
+  const resultText = document.getElementById('resultText');
+  const drawText = document.getElementById('drawText');
+  const deltaText = document.getElementById('deltaText');
+  const historyContainer = document.getElementById('historyContainer');
+  const numberButtons = Array.from(document.querySelectorAll('.number-btn'));
+  const WIN_TEXT = {{ t.win_msg|tojson }};
+  const LOSE_TEXT = {{ t.lose_msg|tojson }};
+  const ROLLED_TEXT = {{ copy.rolled|tojson }};
+  const PICK_TEXT = {{ copy.your_pick|tojson }};
+  const PAYOUT_TEXT = {{ copy.payout|tojson }};
+
+  let selectedNumber = {{ last_choice|tojson }};
+  let currentBalance = {{ balance }};
+
+  function setNumber(num){
+    selectedNumber = num;
+    numberButtons.forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.number, 10) === num);
+    });
+  }
+
+  numberButtons.forEach(btn => {
+    btn.addEventListener('click', () => setNumber(parseInt(btn.dataset.number, 10)));
+  });
+
+  function appendHistory(item){
+    const empty = document.getElementById('historyEmpty');
+    if (empty){
+      empty.remove();
+    }
+    const node = document.createElement('div');
+    node.className = 'history-item';
+    node.innerHTML = `
+      <div>
+        <div style="font-weight:600;color:${item.win ? 'var(--ok)' : 'var(--bad)'}">${item.bet} ₽ • ${PICK_TEXT}: ${item.choice}</div>
+        <div class="meta">${item.timestamp} • ${ROLLED_TEXT}: ${item.winning_number} • ${PAYOUT_TEXT}: x${item.payout}</div>
+      </div>
+      <div style="text-align:right">
+        ${item.win ? `<div class="win">+${item.win_amount} ₽</div>` : `<div class="lose">-${item.bet} ₽</div>`}
+      </div>`;
+    historyContainer.prepend(node);
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (playBtn.disabled){
+      return;
+    }
+    const bet = parseInt(betInput.value, 10);
+    if (!bet || bet <= 0 || bet > currentBalance){
+      alert('Неверная ставка');
+      return;
+    }
+    playBtn.disabled = true;
+    fetch('{{ url_for("play_number_guess") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: new URLSearchParams({ bet, choice: selectedNumber }).toString()
+    })
+    .then(r => r.json().catch(() => ({})).then(data => r.ok ? data : Promise.reject(data)))
+    .then(data => {
+      if (!data.success){
+        alert(data.message || 'Ошибка');
+        playBtn.disabled = false;
+        return;
+      }
+      currentBalance = data.balance;
+      setBalance(data.balance);
+      setLevel(data.level);
+      resultBox.style.display = 'block';
+      if (data.win){
+        resultText.textContent = WIN_TEXT;
+        resultText.className = 'label win';
+        deltaText.innerHTML = `<span class="win">+${data.win_amount} ₽</span>`;
+      } else {
+        resultText.textContent = LOSE_TEXT;
+        resultText.className = 'label lose';
+        deltaText.innerHTML = `<span class="lose">-${bet} ₽</span>`;
+      }
+      drawText.textContent = `${PICK_TEXT}: ${selectedNumber} • ${ROLLED_TEXT}: ${data.winning_number}`;
+      const now = new Date().toLocaleString('ru-RU');
+      appendHistory({
+        bet,
+        choice: selectedNumber,
+        winning_number: data.winning_number,
+        win: data.win,
+        win_amount: data.win_amount,
+        payout: data.payout,
+        timestamp: now
+      });
+      playBtn.disabled = false;
+    })
+    .catch(err => {
+      alert(err.message || 'Ошибка');
+      playBtn.disabled = false;
+    });
+  });
+</script>
+{% endblock %}

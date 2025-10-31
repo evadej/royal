@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Главная - Royal Casino{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+  <div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Добро пожаловать, {{ username }}!</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+        <div style="text-align:center">
+          <div class="muted">Баланс</div>
+          <div style="font-size:26px;color:var(--gold);font-weight:700">{{ balance }} ₽</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Уровень</div>
+          <div style="font-size:26px;color:var(--gold);font-weight:700">{{ level }}</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Опыт</div>
+          <div style="font-size:26px;color:var(--gold);font-weight:700">{{ xp }}/{{ next_level_xp }}</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Серия входов</div>
+          <div style="font-size:26px;color:var(--gold);font-weight:700">{{ user.get('login_streak', 0) }} дней</div>
+        </div>
+      </div>
+      <div style="background:var(--panel);height:10px;border-radius:5px;overflow:hidden">
+        <div style="background:var(--gold);height:100%;width: {{ (xp / next_level_xp * 100)|round }}%"></div>
+      </div>
+    </div>
+
+    {% if new_achievements %}
+    <div class="card" style="border-left:4px solid var(--gold)">
+      <div class="card-header"><h2 class="card-title">🎉 Новые достижения!</h2></div>
+      <div style="display:grid;gap:10px">
+        {% for aid in new_achievements %}
+          {% set a = ACHIEVEMENTS[aid] %}
+          <div class="card" style="display:flex;gap:10px;align-items:center;background:var(--panel)">
+            <div style="font-size:22px">{{ a.icon }}</div>
+            <div>
+              <div style="color:var(--gold);font-weight:700">{{ a.name }}</div>
+              <div class="muted" style="font-size:12px">{{ a.description }}</div>
+            </div>
+            <div style="margin-left:auto;color:var(--gold);font-weight:700">+{{ a.reward }} ₽</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Быстрый доступ</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+        <a class="btn" style="justify-content:center" href="{{ url_for('chance_game') }}"><i class="fas fa-dice"></i> Шанс</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('slots_game') }}"><i class="fas fa-sliders-h"></i> Слоты</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('blackjack_game') }}"><i class="fas fa-diamond"></i> Блэкджек</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('dice_game') }}"><i class="fas fa-dice"></i> Кости</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('coinflip_game') }}"><i class="fas fa-coins"></i> Монетка</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('rps_game') }}"><i class="fas fa-hand-rock"></i> {{ t.rps }}</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('number_guess_game') }}"><i class="fas fa-bullseye"></i> {{ t.number_guess }}</a>
+        <a class="btn" style="justify-content:center" href="{{ url_for('wheel_of_fortune') }}"><i class="fas fa-compact-disc"></i> Колесо</a>
+        <a class="btn btn-outline" style="justify-content:center" href="{{ url_for('deposit') }}"><i class="fas fa-wallet"></i> Баланс</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Последние игры</h2></div>
+      <div style="max-height:300px;overflow:auto">
+        {% if recent_history or recent_slots or recent_dice or recent_wheel or recent_rps or recent_guess %}
+          {% for g in recent_history %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-dice"></i> Игра на шанс</span>
+              {% if g.times %}
+                {% set net = g.win_sum - g.loss_sum %}
+                <span class="{{ 'win' if net >= 0 else 'lose' }}">{{ '+' if net >= 0 else '' }}{{ net }} ₽</span>
+              {% else %}
+                <span class="{{ 'win' if g.win else 'lose' }}">{{ '+' if g.win else '-' }}{{ g.bet }} ₽</span>
+              {% endif %}
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }}{% if g.times %} • {{ g.bet }} ₽ • {{ g.chance }}% × {{ g.times }}{% endif %}</div>
+          </div>
+          {% endfor %}
+          {% for g in recent_slots %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-sliders-h"></i> Игровые автоматы</span>
+              {% if g.times %}
+                {% set net = g.win_sum - g.loss_sum %}
+                <span class="{{ 'win' if net >= 0 else 'lose' }}">{{ '+' if net >= 0 else '' }}{{ net }} ₽</span>
+              {% else %}
+                <span class="{{ 'win' if g.win else 'lose' }}">{{ '+' if g.win else '-' }}{{ g.bet }} ₽</span>
+              {% endif %}
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }}{% if g.times %} • {{ g.bet }} ₽ × {{ g.times }}{% endif %}</div>
+          </div>
+          {% endfor %}
+          {% set dice_types = {'any_seven':'Любая 7','hard_way':'Дубль','any_craps':'Крабы','field':'Поле','specific_number':'Конкретное число'} %}
+          {% for g in recent_dice %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-dice-six"></i> Кости ({{ dice_types.get(g.bet_type, g.bet_type) }})</span>
+              <span class="{{ 'win' if g.win else 'lose' }}">{{ '+' if g.win else '-' }}{{ g.win_amount if g.win else g.bet }} ₽</span>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }}</div>
+          </div>
+          {% endfor %}
+          {% if lang == 'en' %}
+            {% set rps_labels = {'rock':'Rock','paper':'Paper','scissors':'Scissors'} %}
+            {% set tie_label = 'Tie' %}
+            {% set you_label = 'You' %}
+            {% set dealer_label = 'Dealer' %}
+            {% set guess_choice_label = 'Pick' %}
+            {% set guess_rolled_label = 'Winning number' %}
+            {% set guess_payout_label = 'Payout' %}
+          {% else %}
+            {% set rps_labels = {'rock':'Камень','paper':'Бумага','scissors':'Ножницы'} %}
+            {% set tie_label = 'Ничья' %}
+            {% set you_label = 'Вы' %}
+            {% set dealer_label = 'Дилер' %}
+            {% set guess_choice_label = 'Выбор' %}
+            {% set guess_rolled_label = 'Выпало' %}
+            {% set guess_payout_label = 'Выплата' %}
+          {% endif %}
+          {% for g in recent_rps %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-hand-rock"></i> {{ t.rps }}</span>
+              {% if g.tie %}
+                <span class="muted">0 ₽</span>
+              {% else %}
+                <span class="{{ 'win' if g.win else 'lose' }}">{{ '+' if g.win else '-' }}{{ g.win_amount if g.win else g.bet }} ₽</span>
+              {% endif %}
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }} • {{ you_label }}: {{ rps_labels[g.choice] }} • {{ dealer_label }}: {{ rps_labels[g.opponent] }}{% if g.tie %} • {{ tie_label }}{% endif %}</div>
+          </div>
+          {% endfor %}
+          {% for g in recent_guess %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-bullseye"></i> {{ t.number_guess }}</span>
+              <span class="{{ 'win' if g.win else 'lose' }}">{{ '+' if g.win else '-' }}{{ g.win_amount if g.win else g.bet }} ₽</span>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }} • {{ guess_choice_label }}: {{ g.choice }} • {{ guess_rolled_label }}: {{ g.winning_number }} • {{ guess_payout_label }}: x{{ g.payout }}</div>
+          </div>
+          {% endfor %}
+          {% for g in recent_wheel %}
+          <div style="padding:10px;border-bottom:1px solid var(--stroke)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-compact-disc"></i> Колесо фортуны</span>
+              <span class="win">+{{ g.prize }} ₽</span>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">{{ g.timestamp }}</div>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="muted" style="text-align:center;padding:20px"><i class="fas fa-history"></i> История пуста</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Ежедневный бонус</h2></div>
+      <div style="text-align:center">
+        <div style="font-size:40px;color:var(--gold);margin-bottom:10px"><i class="fas fa-gift"></i></div>
+        <p class="muted" style="margin-bottom:12px">
+          {% if last_bonus_date == current_date %}Вы уже получали бонус сегодня{% else %}Заходите каждый день за бесплатными монетами{% endif %}
+        </p>
+        <p class="muted" style="margin-bottom:12px">
+          {% if user.get('login_streak', 0) > 0 %}Текущая серия: {{ user.get('login_streak', 0) }} дней{% endif %}
+        </p>
+        <button id="dailyBonusBtn" class="btn daily-bonus-btn animated-btn" style="width:100%" {% if last_bonus_date == current_date %}disabled{% endif %}>
+          <i class="fas fa-coins"></i>
+          {% if last_bonus_date == current_date %}Бонус получен
+          {% else %}
+            {% if user.get('login_streak', 0) % 7 == 0 %}Получить x2 бонус
+            {% else %}Получить {{ 100 + (user.get('login_streak', 0) * 20) }} ₽
+            {% endif %}
+          {% endif %}
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header"><h2 class="card-title">Реферальная программа</h2></div>
+      <div style="text-align:center;padding:16px;">
+        <div style="font-size:40px;color:var(--gold);margin-bottom:10px"><i class="fas fa-user-plus"></i></div>
+        <p class="muted" style="margin-bottom:12px">
+          Приглашайте друзей и получайте бонусы!
+        </p>
+        <a href="{{ url_for('profile') }}" class="btn" style="width:100%">
+          <i class="fas fa-users"></i> Пригласить друзей
+        </a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header"><h2 class="card-title">Достижения</h2></div>
+      <div style="display:grid;gap:10px">
+        {% for aid, a in top_achievements %}
+          <div class="card" style="display:flex;gap:10px;align-items:center;background:var(--panel);{% if aid not in achievements %}opacity:.6{% endif %}">
+            <div style="font-size:22px">{{ a.icon }}</div>
+            <div>
+              <div style="font-weight:600;{% if aid in achievements %}color:var(--gold){% endif %}">{{ a.name }}</div>
+              <div class="muted" style="font-size:12px">{{ a.description }}</div>
+            </div>
+            {% if aid in achievements %}
+              <div style="margin-left:auto;color:var(--ok)"><i class="fas fa-check-circle"></i></div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  const dailyBtn = document.getElementById('dailyBonusBtn');
+  if (dailyBtn) {
+    dailyBtn.addEventListener('click', () => {
+      dailyBtn.disabled = true;
+      fetch('{{ url_for("daily_bonus") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': CSRF_TOKEN
+        }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          setBalance(data.balance);
+          dailyBtn.innerHTML = '<i class="fas fa-check"></i> Бонус получен';
+          dailyBtn.style.background = 'var(--ok)';
+          dailyBtn.style.color = '#fff';
+        } else {
+          alert(data.message);
+          dailyBtn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Ошибка при начислении бонуса');
+        dailyBtn.disabled = false;
+      });
+    });
+  }
+</script>
+{% endblock %}

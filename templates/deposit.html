@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Баланс - Royal Casino{% endblock %}
+{% block content %}
+  <div style="text-align:center;margin-top:20px;" class="muted">Пополнено: {{ total_deposited }} ₽ • Выведено: {{ total_withdrawn }} ₽</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:880px;margin:20px auto;align-items:start;">
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Пополнение</h2></div>
+      <form method="POST" action="{{ url_for('deposit') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label class="label" for="amount">Сумма пополнения</label>
+          <input class="input" id="amount" name="amount" type="number" min="1" required>
+        </div>
+        <button class="btn" style="width:100%"><i class="fas fa-plus-circle"></i> Пополнить</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Вывод средств</h2></div>
+      <form method="POST" action="{{ url_for('withdraw') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label class="label" for="wamount">Сумма вывода</label>
+          <input class="input" id="wamount" name="amount" type="number" min="1" required>
+        </div>
+        <button class="btn" style="width:100%"><i class="fas fa-minus-circle"></i> Вывести</button>
+      </form>
+    </div>
+  </div>
+  <div class="card" style="max-width:880px;margin:20px auto;">
+    <div class="card-header"><h2 class="card-title">История операций</h2></div>
+    <div style="max-height:300px;overflow:auto;">
+      {% if transactions %}
+        {% for t in transactions %}
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--stroke);">
+            <div>
+              <div style="font-weight:600;color:{% if t.type == 'deposit' %}var(--ok){% else %}var(--bad){% endif %}">
+                {{ '+' if t.type == 'deposit' else '-' }}{{ t.amount }} ₽
+              </div>
+              <div class="muted" style="font-size:12px;">{{ t.timestamp }}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="muted" style="font-size:12px;">
+                {% if t.type == 'deposit' %}Пополнение{% else %}Вывод{% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="muted" style="text-align:center;padding:20px;">История пуста</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

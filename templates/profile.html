@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Профиль - Royal Casino{% endblock %}
+{% block content %}
+  <div style="max-width:860px;margin:24px auto;">
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Профиль пользователя</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:12px">
+        <div style="text-align:center">
+          <div class="muted">Имя пользователя</div><div style="font-weight:700;color:var(--gold)">{{ username }}</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Баланс</div><div style="font-weight:700;color:var(--gold)">{{ balance }} ₽</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Уровень</div><div style="font-weight:700;color:var(--gold)">{{ level }}</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Дней в игре</div><div style="font-weight:700;color:var(--gold)">{{ stats.days_since_joined }}</div>
+        </div>
+      </div>
+      <div style="background:var(--panel);height:10px;border-radius:6px;overflow:hidden">
+        <div style="background:var(--gold);height:100%;width: {{ (xp / next_level_xp * 100)|round }}%"></div>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:8px">Опыт: {{ xp }}/{{ next_level_xp }}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Статистика игр</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+        <div style="text-align:center"><div class="muted">Всего игр</div><div style="font-size:22px;color:var(--gold);font-weight:700">{{ games_played }}</div></div>
+        <div style="text-align:center"><div class="muted">Побед</div><div style="font-size:22px;color:var(--gold);font-weight:700">{{ wins }}</div></div>
+        <div style="text-align:center"><div class="muted">Процент побед</div><div style="font-size:22px;color:var(--gold);font-weight:700">{{ stats.win_rate }}%</div></div>
+        <div style="text-align:center"><div class="muted">Общий выигрыш</div><div style="font-size:22px;color:var(--gold);font-weight:700">{{ total_winnings }} ₽</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Детальная статистика</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
+        <div style="text-align:center">
+          <div class="muted">Любимая игра</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:700">
+            {% if stats.favorite_game == 'chance' %}Шанс{% endif %}
+            {% if stats.favorite_game == 'slots' %}Слоты{% endif %}
+            {% if stats.favorite_game == 'blackjack' %}Блэкджек{% endif %}
+            {% if stats.favorite_game == 'dice' %}Кости{% endif %}
+            {% if stats.favorite_game == 'wheel' %}Колесо{% endif %}
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Крупнейший выигрыш</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:700">{{ stats.biggest_win }} ₽</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Пополнений</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:700">{{ stats.total_deposited }} ₽</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Выведено</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:700">{{ stats.total_withdrawn }} ₽</div>
+        </div>
+        <div style="text-align:center">
+          <div class="muted">Дата регистрации</div>
+          <div style="font-size:16px;color:var(--gold);font-weight:700">{{ registered_date }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Статистика по играм</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+        <div style="text-align:center">
+          <div style="font-size:36px;color:var(--gold)"><i class="fas fa-dice"></i></div>
+          <div class="muted">Шанс</div>
+          <div style="font-weight:700;color:var(--gold)">{{ chance_wins }} побед</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:36px;color:var(--gold)"><i class="fas fa-sliders-h"></i></div>
+          <div class="muted">Слоты</div>
+          <div style="font-weight:700;color:var(--gold)">{{ slots_wins }} побед</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:36px;color:var(--gold)"><i class="fas fa-diamond"></i></div>
+          <div class="muted">Блэкджек</div>
+          <div style="font-weight:700;color:var(--gold)">{{ blackjack_wins }} побед</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:36px;color:var(--gold)"><i class="fas fa-dice"></i></div>
+          <div class="muted">Кости</div>
+          <div style="font-weight:700;color:var(--gold)">{{ dice_wins }} побед</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:36px;color:var(--gold)"><i class="fas fa-compact-disc"></i></div>
+          <div class="muted">Колесо</div>
+          <div style="font-weight:700;color:var(--gold)">{{ wheel_wins }} побед</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Достижения</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+        {% for aid, a in ACHIEVEMENTS.items() %}
+          <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--panel);{% if aid not in achievements %}opacity:.6{% endif %}">
+            <div style="font-size:28px">{{ a.icon }}</div>
+            <div>
+              <div style="font-weight:700;{% if aid in achievements %}color:var(--gold){% endif %}">{{ a.name }}</div>
+              <div class="muted" style="font-size:12px">{{ a.description }}</div>
+              {% if aid in achievements %}
+                <div class="muted" style="font-size:12px;color:var(--ok)"><i class="fas fa-coins"></i> Награда: {{ a.reward }} ₽</div>
+              {% endif %}
+            </div>
+            {% if aid in achievements %}<div style="margin-left:auto;color:var(--ok);font-size:22px"><i class="fas fa-check-circle"></i></div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Реферальная программа</h2></div>
+      <div style="padding:16px;">
+        <div style="margin-bottom:16px;">
+          {% if referral_code %}
+            <p>Ваш промокод (уровень {{ promo_level }}): <strong style="color:var(--gold)" id="promoCodeDisplay">{{ referral_code }}</strong></p>
+          {% else %}
+            <p>У вас нет промокода. Создайте свой:</p>
+            <p id="promoCodeDisplay" style="display:none"></p>
+          {% endif %}
+          <input class="input" id="promoCodeInput" placeholder="Новый промокод" style="margin-top:8px;">
+          <button id="savePromoBtn" class="btn" style="margin-top:8px;"><i class="fas fa-save"></i> Сохранить код</button>
+          <button id="upgradePromoBtn" class="btn btn-outline" style="margin-top:8px;" {% if not referral_code or promo_upgrade_cost is none %}disabled{% endif %}>
+            <i class="fas fa-level-up-alt"></i>
+            {% if promo_upgrade_cost %}Улучшить ({{ promo_upgrade_cost }} ₽){% else %}Макс уровень{% endif %}
+          </button>
+          <p class="muted" style="margin-top:8px;">Каждый уровень даёт {{ promo_level }}% отчислений друзьям. Смена кода стоит 10000 ₽.</p>
+          <div id="referralLink" style="display:none">{% if referral_code %}{{ request.host_url }}register?ref={{ referral_code }}{% endif %}</div>
+          {% if referral_code %}
+            <button onclick="copyReferralLink()" class="btn" style="margin-top:10px;">
+              <i class="fas fa-copy"></i> Скопировать ссылку
+            </button>
+          {% endif %}
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px;">
+          <div style="text-align:center">
+            <div class="muted">Приглашено друзей</div>
+            <div style="font-size:22px;color:var(--gold);font-weight:700">{{ referrals_count }}</div>
+          </div>
+          <div style="text-align:center">
+            <div class="muted">Заработано с рефералов</div>
+            <div style="font-size:22px;color:var(--gold);font-weight:700">{{ referral_earnings }} ₽</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  function copyReferralLink() {
+    const link = document.getElementById('referralLink').textContent;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link).then(() => {
+            alert('Реферальная ссылка скопирована!');
+        }).catch(() => {
+            useFallbackCopyMethod(link);
+        });
+    } else {
+        useFallbackCopyMethod(link);
+    }
+  }
+  function useFallbackCopyMethod(text) {
+    const tempInput = document.createElement('input');
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
+        alert('Реферальная ссылка скопирована!');
+    } catch (err) {
+        alert('Не удалось скопировать. Скопируйте ссылку вручную.');
+    }
+    document.body.removeChild(tempInput);
+  }
+
+  const savePromoBtn = document.getElementById('savePromoBtn');
+  const promoInput = document.getElementById('promoCodeInput');
+  const promoDisplay = document.getElementById('promoCodeDisplay');
+  const upgradeBtn = document.getElementById('upgradePromoBtn');
+  let promoLevel = {{ promo_level }};
+
+  savePromoBtn.addEventListener('click', () => {
+    const code = promoInput.value.trim();
+    if (!code) { alert('Введите код'); return; }
+    fetch('{{ url_for("set_promo_code") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
+      body: new URLSearchParams({code}).toString()
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        promoDisplay.textContent = data.code;
+        promoDisplay.style.display = 'block';
+        document.getElementById('referralLink').textContent = '{{ request.host_url }}register?ref=' + data.code;
+        setBalance(data.balance);
+        upgradeBtn.disabled = false;
+        alert('Код обновлен!');
+      } else {
+        alert(data.message);
+      }
+    });
+  });
+
+  upgradeBtn.addEventListener('click', () => {
+    if (upgradeBtn.disabled) return;
+    const cost = promoLevel * 10000;
+    if (!confirm(`Улучшить промокод до уровня ${promoLevel + 1} за ${cost} ₽?`)) return;
+    fetch('{{ url_for("upgrade_promo_code") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN }
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        promoLevel = data.promo_level;
+        if (data.next_cost) {
+          upgradeBtn.innerHTML = `<i class="fas fa-level-up-alt"></i> Улучшить (${data.next_cost} ₽)`;
+        } else {
+          upgradeBtn.innerHTML = '<i class="fas fa-level-up-alt"></i> Макс уровень';
+          upgradeBtn.disabled = true;
+        }
+        document.querySelector('.balance').textContent = data.balance + ' ₽';
+        alert('Промокод улучшен! Новый уровень: ' + data.promo_level);
+      } else {
+        alert(data.message);
+      }
+    });
+  });
+  </script>
+{% endblock %}

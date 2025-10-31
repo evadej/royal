@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Игра на шанс - Royal Casino{% endblock %}
+{% block styles %}
+<style>
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}
+  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:20px}
+  .slider{width:100%;height:10px;background:var(--panel);border-radius:6px;-webkit-appearance:none;outline:none}
+  .slider::-webkit-slider-thumb{ -webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--gold);cursor:pointer}
+  .value{font-size:24px;color:var(--gold);font-weight:700;text-align:center;margin:8px 0}
+  .result{background:var(--panel);border-radius:8px;padding:16px;text-align:center;margin-top:10px}
+  .history-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--stroke)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="grid">
+  <div class="panel">
+    <h2 style="color:var(--gold);margin-bottom:14px"><i class="fas fa-dice"></i> Игра на шанс</h2>
+    <div>
+      <label class="label">Шанс (1–100%)</label>
+      <input id="chanceSlider" class="slider" type="range" min="1" max="100" value="{{ last_chance }}">
+      <div id="chanceVal" class="value">{{ last_chance }}%</div>
+    </div>
+    <div class="form-group">
+      <label class="label" for="bet">Ставка</label>
+      <input id="bet" class="input" type="number" min="1" max="{{ balance }}" value="{{ last_bet }}">
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0">
+      <button class="btn" onclick="mul(2)">x2</button>
+      <button class="btn" onclick="mul(3)">x3</button>
+      <button class="btn" onclick="mul(4)">x4</button>
+      <button class="btn" onclick="mul(5)">x5</button>
+    </div>
+    <button id="playBtn" class="btn" style="width:100%"><i class="fas fa-play"></i> Сыграть</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="autoTimes" class="input" type="number" min="1" value="10" style="flex:1">
+      <button id="autoBtn" class="btn" style="white-space:nowrap"><i class="fas fa-robot"></i> Авто‑игра</button>
+    </div>
+
+    <div id="out" class="result" style="display:none">
+      <div id="outText"></div>
+      <div id="outRoll" style="font-size:28px;font-weight:700;margin-top:6px"></div>
+      <div id="outDelta"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h3>Правила игры</h3>
+      <div class="muted" style="margin:10px 0">Выберите шанс от 1 до 100%. Чем меньше шанс, тем больше возможный выигрыш.</div>
+    </div>
+    <div class="panel" style="margin-top:20px">
+      <h3>История игр</h3>
+      <div id="historyContainer" style="max-height:520px;overflow:auto;margin-top:10px">
+      {% if history %}
+        {% for item in history %}
+          {% if item.times %}
+          <div class="history-item">
+            <div>
+              <div style="font-weight:600">{{ item.bet }} ₽ • {{ item.chance }}% × {{ item.times }}</div>
+              <div class="muted" style="font-size:12px">{{ item.timestamp }}</div>
+            </div>
+            <div style="text-align:right">
+              {% set net = item.win_sum - item.loss_sum %}
+              <div class="{{ 'win' if net >= 0 else 'lose' }}">{{ '+' if net >= 0 else '' }}{{ net }} ₽</div>
+              <div class="muted" style="font-size:12px">Авто‑игра</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="history-item">
+            <div>
+              <div style="font-weight:600;color:{% if item.win %}var(--ok){% else %}var(--bad){% endif %}">{{ item.bet }} ₽ • {{ item.chance }}%</div>
+              <div class="muted" style="font-size:12px">{{ item.timestamp }}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="{{ 'win' if item.win else 'lose' }}">{{ '+' if item.win else '-' }}{{ item.bet }} ₽</div>
+              <div class="muted" style="font-size:12px">{{ item.result.split('. ')[0] }}</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="muted" style="text-align:center;padding:20px"><i class="fas fa-history"></i> История пуста</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const slider = document.getElementById('chanceSlider');
+  const val = document.getElementById('chanceVal');
+  const betInput = document.getElementById('bet');
+  const out = document.getElementById('out');
+  const outText = document.getElementById('outText');
+  const outRoll = document.getElementById('outRoll');
+  const outDelta = document.getElementById('outDelta');
+  const playBtn = document.getElementById('playBtn');
+  const autoBtn = document.getElementById('autoBtn');
+  const autoTimes = document.getElementById('autoTimes');
+  const historyContainer = document.getElementById('historyContainer');
+
+  // Восстановление сохраненных значений при загрузке страницы
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedChance = localStorage.getItem('chance_value');
+    if (savedChance) {
+      slider.value = savedChance;
+      val.textContent = savedChance + '%';
+    }
+    
+    const savedBet = localStorage.getItem('chance_bet');
+    if (savedBet) {
+      betInput.value = savedBet;
+    }
+  });
+
+  // Сохранение значения шанса при изменении
+  slider.addEventListener('input', () => {
+    val.textContent = slider.value + '%';
+    localStorage.setItem('chance_value', slider.value);
+  });
+
+  // Сохранение суммы ставки при изменении
+  betInput.addEventListener('change', function() {
+    localStorage.setItem('chance_bet', this.value);
+  });
+
+  function mul(m){ 
+    let b = parseInt(betInput.value||'0',10);
+    const maxB = parseInt(betInput.max||'0',10);
+    b = Math.min(maxB, b*m); 
+    betInput.value = b;
+    localStorage.setItem('chance_bet', b);
+  }
+
+  function post(url, body){
+    return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':CSRF_TOKEN},
+      credentials: 'same-origin',
+      body: new URLSearchParams(body).toString()
+    }).then(r => r.ok ? r.json() : Promise.reject());
+  }
+
+  // Функция для добавления новой записи в историю
+  function addHistoryItem(data, chance, bet) {
+    const emptyMessage = historyContainer.querySelector('.muted');
+    if (emptyMessage && emptyMessage.textContent.includes('История пуста')) {
+      emptyMessage.remove();
+    }
+    const now = new Date();
+    const timeString = now.toLocaleString('ru-RU');
+    const historyItem = document.createElement('div');
+    historyItem.className = 'history-item';
+    historyItem.innerHTML = `
+      <div>
+        <div style="font-weight:600;color:${data.win ? 'var(--ok)' : 'var(--bad)'}">${bet} ₽ • ${chance}%</div>
+        <div class="muted" style="font-size:12px">${timeString}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="${data.win ? 'win' : 'lose'}">${data.win ? '+' : '-'}${bet} ₽</div>
+        <div class="muted" style="font-size:12px">${data.result.split('. ')[0]}</div>
+      </div>
+    `;
+    historyContainer.prepend(historyItem);
+  }
+
+  function addSummaryHistoryItem(data, chance, bet) {
+    const emptyMessage = historyContainer.querySelector('.muted');
+    if (emptyMessage && emptyMessage.textContent.includes('История пуста')) emptyMessage.remove();
+    const now = new Date().toLocaleString('ru-RU');
+    const net = data.win_sum - data.loss_sum;
+    const historyItem = document.createElement('div');
+    historyItem.className = 'history-item';
+    historyItem.innerHTML = `
+      <div>
+        <div style="font-weight:600">${bet} ₽ • ${chance}% × ${data.times}</div>
+        <div class="muted" style="font-size:12px">${now}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="${net >= 0 ? 'win' : 'lose'}">${net >= 0 ? '+' : ''}${net} ₽</div>
+        <div class="muted" style="font-size:12px">Авто‑игра</div>
+      </div>`;
+    historyContainer.prepend(historyItem);
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (playBtn.disabled) return;
+    playBtn.disabled = true;
+    const chance = parseInt(slider.value,10);
+    const bet = parseInt(betInput.value,10);
+    if (!bet || bet <= 0 || bet > {{ balance }}) {
+      alert('Неверная ставка');
+      playBtn.disabled = false;
+      return;
+    }
+    post('{{ url_for("play_chance") }}', {chance, bet}).then(data=>{
+      if (!data.success){ alert(data.message); return; }
+      setBalance(data.balance);
+      out.style.display='block';
+      outText.textContent = data.result.split('. ')[0] + '.';
+      outText.className = data.win ? 'win' : 'lose';
+      outRoll.textContent = 'Выпало: ' + data.random_number;
+      outRoll.className = data.win ? 'win' : 'lose';
+      outDelta.innerHTML = data.win ? `<span class="win">+ ${data.win_amount} ₽</span>` : `<span class="lose">- ${bet} ₽</span>`;
+      setLevel(data.level);
+      addHistoryItem(data, chance, bet);
+    }).catch(()=>alert('Ошибка запроса')).finally(()=>playBtn.disabled=false);
+  });
+
+  autoBtn.addEventListener('click', (e) => {
+    if (autoBtn.disabled) return;
+    const chance = parseInt(slider.value,10);
+    const bet = parseInt(betInput.value,10);
+    const times = parseInt(autoTimes.value,10);
+    if (!bet || bet <= 0 || bet > {{ balance }}) { alert('Неверная ставка'); return; }
+    if (!times || times <= 0) { alert('Неверное количество ставок'); return; }
+    autoBtn.disabled = true; const txt = autoBtn.innerHTML; autoBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Играем...';
+    post('{{ url_for("auto_play") }}', {game_type:'chance', chance, bet, times}).then(data=>{
+      if (!data.success){ alert(data.message); return; }
+      setBalance(data.final_balance);
+      out.style.display = 'block';
+      outText.textContent = `Авто‑игра завершена! Ставок: ${data.times}, побед: ${data.wins}, поражений: ${data.losses}`;
+      outText.className = data.win_sum >= data.loss_sum ? 'win' : 'lose';
+      outRoll.textContent = `Итоговый баланс: ${data.final_balance} ₽`;
+      const net = data.win_sum - data.loss_sum;
+      outDelta.innerHTML = net >= 0 ? `<span class="win">+ ${net} ₽</span>` : `<span class="lose">${net} ₽</span>`;
+      setLevel(data.level);
+      addSummaryHistoryItem(data, chance, bet);
+    }).catch(()=>alert('Ошибка запроса'))
+      .finally(()=>{ autoBtn.disabled=false; autoBtn.innerHTML=txt; });
+  });
+</script>
+{% endblock %}

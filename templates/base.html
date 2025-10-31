@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Royal Casino{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function(){
+      try {
+        const saved = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+      } catch (err) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#2563eb">
+  {% block styles %}{% endblock %}
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a class="logo" href="{{ url_for('index') }}"><i class="fas fa-crown"></i> Royal Casino</a>
+      <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+      <nav class="nav">
+        {% if 'user_id' in session %}
+          <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i> {{ t.home }}</a>
+          <a class="nav-link" href="{{ url_for('chance_game') }}"><i class="fas fa-dice"></i> {{ t.chance }}</a>
+          <a class="nav-link" href="{{ url_for('slots_game') }}"><i class="fas fa-sliders-h"></i> {{ t.slots }}</a>
+          <a class="nav-link" href="{{ url_for('dice_game') }}"><i class="fas fa-dice-six"></i> {{ t.dice }}</a>
+          <a class="nav-link" href="{{ url_for('blackjack_game') }}"><i class="fas fa-diamond"></i> {{ t.blackjack }}</a>
+          <a class="nav-link" href="{{ url_for('coinflip_game') }}"><i class="fas fa-coins"></i> {{ t.coinflip }}</a>
+          <a class="nav-link" href="{{ url_for('rps_game') }}"><i class="fas fa-hand-rock"></i> {{ t.rps }}</a>
+          <a class="nav-link" href="{{ url_for('number_guess_game') }}"><i class="fas fa-bullseye"></i> {{ t.number_guess }}</a>
+          <a class="nav-link" href="{{ url_for('wheel_of_fortune') }}"><i class="fas fa-compact-disc"></i> {{ t.wheel }}</a>
+          <a class="nav-link" href="{{ url_for('deposit') }}"><i class="fas fa-wallet"></i> {{ t.balance }}</a>
+        {% endif %}
+      </nav>
+      <div class="actions">
+        <button class="nav-link theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+        {% if 'user_id' in session %}
+          <span class="balance"><i class="fas fa-coins"></i> {{ session.balance }} ₽</span>
+          <span class="level"><i class="fas fa-star"></i> {{ t.level }} {{ session.level }}</span>
+          <a class="nav-link" href="{{ url_for('profile') }}"><i class="fas fa-user"></i> {{ session.username }}</a>
+          <form id="logoutForm" method="POST" action="{{ url_for('logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="nav-link" style="background:none;border:0;padding:0;cursor:pointer"><i class="fas fa-sign-out-alt"></i></button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  <main class="main container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div id="flash" class="flash">
+          {% for m in messages %}
+            <div class="card fade-in" style="border-left:4px solid var(--primary);margin-bottom:10px">{{ m }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+    const LEVEL_PREFIX = {{ t.level|tojson }};
+    const themeToggle = document.getElementById('themeToggle');
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    const THEME_TEXT = {{ {'light': 'Включить тёмную тему', 'dark': 'Включить светлую тему'}|tojson }};
+    function applyTheme(theme, persist = true){
+      document.documentElement.setAttribute('data-theme', theme);
+      if (persist){
+        try { localStorage.setItem('theme', theme); } catch (err) {}
+      }
+      if (themeMeta){
+        themeMeta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#2563eb');
+      }
+      if (themeToggle){
+        const icon = theme === 'dark' ? 'fa-sun' : 'fa-moon';
+        const label = THEME_TEXT[theme] || THEME_TEXT.light;
+        themeToggle.innerHTML = `<i class="fas ${icon}"></i>`;
+        themeToggle.setAttribute('aria-label', label);
+        themeToggle.setAttribute('title', label);
+      }
+    }
+    (function(){
+      let initial = document.documentElement.getAttribute('data-theme');
+      if (!initial){
+        try { initial = localStorage.getItem('theme') || 'light'; }
+        catch (err){ initial = 'light'; }
+      }
+      applyTheme(initial, false);
+    })();
+    if (themeToggle){
+      themeToggle.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+      });
+    }
+    const menuToggle = document.querySelector('.menu-toggle');
+    const nav = document.querySelector('.nav');
+    if (menuToggle){
+      menuToggle.addEventListener('click', () => nav.classList.toggle('open'));
+    }
+    function setBalance(val){
+      const el = document.querySelector('.balance');
+      if (el) el.innerHTML = '<i class="fas fa-coins"></i> ' + val + ' ₽';
+    }
+    function setLevel(level){
+      const badge = document.querySelector('.level');
+      if (badge) badge.innerHTML = '<i class="fas fa-star"></i> ' + LEVEL_PREFIX + ' ' + level;
+    }
+    setTimeout(() => {
+      const el = document.getElementById('flash');
+      if (el) el.remove();
+    }, 5000);
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installButton = document.createElement('button');
+      installButton.className = 'btn';
+      installButton.innerHTML = '<i class="fas fa-download"></i> ' + INSTALL_TEXT;
+      installButton.addEventListener('click', installApp);
+      const header = document.querySelector('.header');
+      if (header) {
+        header.appendChild(installButton);
+      }
+    });
+    const INSTALL_TEXT = {{ t.install_app|tojson }};
+    function installApp(){
+      if (deferredPrompt){
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => deferredPrompt = null);
+      }
+    }
+    if ('serviceWorker' in navigator){
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
+      });
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
+
